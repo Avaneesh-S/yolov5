@@ -1030,13 +1030,17 @@ def non_max_suppression(
     if isinstance(prediction, (list, tuple)):  # YOLOv5 model in validation model, output = (inference_out, loss_out)
         prediction = prediction[0]  # select only inference output
 
+    x=prediction[0].to('cpu',non_blocking=True)
+
     device = prediction.device
     mps = "mps" in device.type  # Apple MPS
     if mps:  # MPS not fully supported yet, convert tensors to CPU before NMS
         prediction = prediction.cpu()
+    xc = prediction[..., 4] > conf_thres  # candidates
+    xc_now=xc[0].to('cpu',non_blocking=True)
     bs = prediction.shape[0]  # batch size
     nc = prediction.shape[2] - nm - 5  # number of classes
-    xc = prediction[..., 4] > conf_thres  # candidates
+
 
     # Settings
     # min_wh = 2  # (pixels) minimum box width and height
@@ -1053,7 +1057,11 @@ def non_max_suppression(
     for xi, x in enumerate(prediction):  # image index, image inference
         # Apply constraints
         # x[((x[..., 2:4] < min_wh) | (x[..., 2:4] > max_wh)).any(1), 4] = 0  # width-height
-        x = x[xc[xi]]  # confidence
+        if xi+1<prediction.size(0):
+            next_x=prediction[xi+1].to('cpu',non_blocking=True)
+            next_xc=prediction[xi+1].to('cpu',non_blocking=True)
+
+        x = x[xc_now]  # confidence
 
         # Cat apriori labels if autolabelling
         if labels and len(labels[xi]):
@@ -1066,6 +1074,9 @@ def non_max_suppression(
 
         # If none remain process next image
         if not x.shape[0]:
+            if xi+1<prediction.size(0):
+                x=next_x
+                xc_now=next_xc
             continue
 
         # Compute conf
@@ -1094,6 +1105,9 @@ def non_max_suppression(
         # Check shape
         n = x.shape[0]  # number of boxes
         if not n:  # no boxes
+            if xi+1<prediction.size(0):
+                x=next_x
+                xc_now=next_xc
             continue
         x = x[x[:, 4].argsort(descending=True)[:max_nms]]  # sort by confidence and remove excess boxes
 
@@ -1116,6 +1130,10 @@ def non_max_suppression(
         if (time.time() - t) > time_limit:
             LOGGER.warning(f"WARNING ⚠️ NMS time limit {time_limit:.3f}s exceeded")
             break  # time limit exceeded
+
+        if xi + 1 < prediction.size(0):
+            x = next_x
+            xc_now = next_xc
 
     return output
 

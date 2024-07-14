@@ -27,7 +27,7 @@ Usage - formats:
                                  yolov5s_edgetpu.tflite     # TensorFlow Edge TPU
                                  yolov5s_paddle_model       # PaddlePaddle
 """
-
+import time
 import argparse
 import csv
 import os
@@ -421,4 +421,6 @@ def main(opt):
 
 if __name__ == "__main__":
     opt = parse_opt()
+    start=time.time()
     main(opt)
+    print("execution time",time.time()-start)
