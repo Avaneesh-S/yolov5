@@ -178,6 +178,8 @@ def run(
         dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
     vid_path, vid_writer = [None] * bs, [None] * bs
 
+    start=time.time()
+
     # Run inference
     model.warmup(imgsz=(1 if pt or model.triton else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(device=device), Profile(device=device), Profile(device=device))
@@ -304,6 +306,8 @@ def run(
         # Print time (inference-only)
         LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
 
+    print("\n Total video processing time:",time.time()-start,"\n")
+
     # Print results
     t = tuple(x.t / seen * 1e3 for x in dt)  # speeds per image
     LOGGER.info(f"Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}" % t)
@@ -423,4 +427,4 @@ if __name__ == "__main__":
     opt = parse_opt()
     start=time.time()
     main(opt)
-    print("execution time",time.time()-start)
+    print(" \n Script execution time",time.time()-start)
